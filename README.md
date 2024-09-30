@@ -184,8 +184,6 @@ To effectively use the SyncSheetDB application, please adhere to the following r
 
 ## Flow of Events
 
-## Flow of Events
-
 ### 1. User Updates a Cell in Google Sheet
 1. User modifies any cell in the Google Sheet.
 2. **syncServerBE** listens to the updated data through the **API Script** in the Google Spreadsheet.
