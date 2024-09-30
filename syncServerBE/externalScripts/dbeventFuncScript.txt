@@ -1,0 +1,84 @@
+CREATE OR REPLACE FUNCTION notify_testuser_event() 
+RETURNS TRIGGER AS $$
+DECLARE
+    changed_columns jsonb := '{}'::jsonb;      -- To store changed column names and values
+    updated_column text;                       -- To store the name of the updated column
+    operationType text;                        -- To store the type of operation (INSERT, UPDATE, DELETE)
+    tableName text := TG_TABLE_NAME;           -- The name of the table
+    eventTime timestamp := current_timestamp;  -- Current timestamp of the event
+BEGIN
+    -- Check if the operation is an UPDATE
+    IF TG_OP = 'UPDATE' THEN
+        operationType := 'UPDATE';
+
+        -- Track changes for each column
+        IF NEW.name IS DISTINCT FROM OLD.name THEN
+            changed_columns := jsonb_set(changed_columns, '{name}', to_jsonb(NEW.name));
+            updated_column := 'name';
+        END IF;
+
+        IF NEW.email IS DISTINCT FROM OLD.email THEN
+            changed_columns := jsonb_set(changed_columns, '{email}', to_jsonb(NEW.email));
+            updated_column := 'email';
+        END IF;
+
+        IF NEW.password IS DISTINCT FROM OLD.password THEN
+            changed_columns := jsonb_set(changed_columns, '{password}', to_jsonb(NEW.password));
+            updated_column := 'password';
+        END IF;
+
+        IF NEW.bio IS DISTINCT FROM OLD.bio THEN
+            changed_columns := jsonb_set(changed_columns, '{bio}', to_jsonb(NEW.bio));
+            updated_column := 'bio';
+        END IF;
+
+    -- Check if the operation is an INSERT
+    ELSIF TG_OP = 'INSERT' THEN
+        operationType := 'INSERT';
+
+        -- Collect all inserted columns
+        changed_columns := jsonb_build_object(
+            'userId', NEW.userId,
+            'name', NEW.name,
+            'email', NEW.email,
+            'password', NEW.password,
+            'bio', NEW.bio
+        );
+
+        -- Set the updated_column to indicate all columns were inserted
+        updated_column := 'all';
+
+    -- Check if the operation is a DELETE
+    ELSIF TG_OP = 'DELETE' THEN
+        operationType := 'DELETE';
+
+        -- Collect the deleted row's primary key
+        changed_columns := jsonb_build_object(
+            'userId', OLD.userId,
+            'name', OLD.name,
+            'email', OLD.email,
+            'password', OLD.password,
+            'bio', OLD.bio
+        );
+
+        -- For DELETE, set updated_column to 'all' to indicate the entire row was deleted
+        updated_column := 'all';
+    END IF;
+
+    -- Notify with the operation type, table name, and changes
+    PERFORM pg_notify(
+        'db_update_channel',   -- Notify the 'db_update_channel' which you are listening to in your BE
+        json_build_object(
+            'operationType', operationType,   -- Type of the operation (INSERT, UPDATE, DELETE)
+            'tableName', tableName,           -- Name of the table
+            'timeStamp', eventTime,           -- Timestamp of the event
+            'primaryKeyId', COALESCE(NEW.userId, OLD.userId), -- Primary key for the user (NEW for INSERT/UPDATE, OLD for DELETE)
+            'row', COALESCE(NEW.userId, OLD.userId),  -- Representing the 'row' by the user ID
+            'column', updated_column,         -- The name of the updated column or 'all'
+            'changes', changed_columns        -- JSON object of changed columns or row data
+        )::text
+    );
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;

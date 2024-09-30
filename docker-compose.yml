@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  syncserver-app:
+    build: 
+      context: ./syncServerBE
+      dockerfile: ../docker/Dockerfile.syncServerBE
+    container_name: syncServerBE_container
+    environment: 
+      - RABBITMQ_URL=<YOUR CREDENTIALS HERE>
+      - REDIS_HOST=<YOUR CREDENTIALS HERE>
+      - REDIS_PORT=<YOUR CREDENTIALS HERE>
+      - REDIS_PASSWORD=<YOUR CREDENTIALS HERE>
+      - REDIS_HOST_LOCK=<YOUR CREDENTIALS HERE>
+      - REDIS_PORT_LOCK=<YOUR CREDENTIALS HERE>
+      - REDIS_PASSWORD_LOCK=<YOUR CREDENTIALS HERE>
+    ports:
+      - "3100:3100"
+  
+  sheetsyncserver-app:
+    build:
+      context: ./sheetSyncServer
+      dockerfile: ../docker/Dockerfile.sheetSyncServer
+    container_name: sheetSyncServer_container
+    environment:
+      - RABBITMQ_URL=<YOUR CREDENTIALS HERE>
+      - GOOGLE_SHEET_ID=<YOUR CREDENTIALS HERE>
+    volumes:
+      - ./sheetSyncServer/config/project_creds.json:/app/config/project_creds.json 
+
+  dbsyncserver-app:
+    build: 
+      context: ./dbSyncServer
+      dockerfile: ../docker/Dockerfile.dbSyncServer
+    container_name: dbSyncServer_container
+    environment: 
+      - RABBITMQ_URL=<YOUR CREDENTIALS HERE>
+      - DB_CONNECTION_STRING=<YOUR CREDENTIALS HERE>
+    ports:
+      - "3200:3200"

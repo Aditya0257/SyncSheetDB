@@ -1,0 +1,14 @@
+FROM node:lts-alpine AS base
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+
+RUN npm install
+
+COPY tsconfig.json ./
+COPY src ./src
+
+COPY . .
+
+CMD ["npm", "run", "build"]
